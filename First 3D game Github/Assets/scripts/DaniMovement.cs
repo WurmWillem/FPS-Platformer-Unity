@@ -13,7 +13,7 @@ public class DaniMovement : MonoBehaviour
 
     //Rotation and look
     private float xRotation;
-    private float sensitivity = 50f;
+    private float sensitivity = 75f;
     private float sensMultiplier = 1f;
 
     //Movement
@@ -145,7 +145,7 @@ public class DaniMovement : MonoBehaviour
         // Movement in air
         if (!grounded)
         {
-            multiplier = 2;
+            multiplier = 0.75f;
             multiplierV = 0.75f;
         }
 
