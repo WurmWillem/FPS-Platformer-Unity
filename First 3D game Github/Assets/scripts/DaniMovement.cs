@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 
 public class DaniMovement : MonoBehaviour
@@ -17,10 +18,10 @@ public class DaniMovement : MonoBehaviour
     private float sensMultiplier = 1f;
 
     //Movement
-    public float moveSpeed = 4500;
-    public float maxSpeed = 20;
-    public bool grounded;
-    public LayerMask whatIsGround;
+    [SerializeField] float moveSpeed = 4500;
+    [SerializeField] float maxSpeed = 20;
+    [SerializeField] bool grounded;
+    [SerializeField] LayerMask whatIsGround;
 
     public float counterMovement = 0.175f;
     private float threshold = 0.01f;
@@ -29,22 +30,27 @@ public class DaniMovement : MonoBehaviour
     //Crouch & Slide
     private Vector3 crouchScale = new Vector3(1, 0.5f, 1);
     private Vector3 playerScale;
-    public float slideForce = 400;
-    public float slideCounterMovement = 0.2f;
+    [SerializeField] float slideCounterMovement = 0.2f;
 
     //Jumping
     private bool readyToJump = true;
     private float jumpCooldown = 0.3f;
-    public float jumpForce = 550f;
+    [SerializeField] float jumpForce = 550f;
     private int jumps = 1;
 
     //Input
     float x, y;
-    bool jumping, sprinting, crouching;
+    bool jumping, sprinting, isDashing, crouching;
 
     //Sliding
     private Vector3 normalVector = Vector3.up;
-    private Vector3 wallNormalVector;
+    //private Vector3 wallNormalVector;
+
+    //Dash
+    [SerializeField] float dashSpeed = 750f;
+    [SerializeField] float dashDuration = 0.45f;
+    private float dashCooldown = 1f;
+    private float dashCheck = 0f;
 
     void Awake()
     {
@@ -55,7 +61,7 @@ public class DaniMovement : MonoBehaviour
     {
         playerScale = transform.localScale;
         Cursor.lockState = CursorLockMode.Locked;
-        Cursor.visible = true;
+        Cursor.visible = false;
     }
 
 
@@ -78,6 +84,9 @@ public class DaniMovement : MonoBehaviour
         x = Input.GetAxisRaw("Horizontal");
         y = Input.GetAxisRaw("Vertical");
         jumping = Input.GetButton("Jump");
+        isDashing = Input.GetKey(KeyCode.LeftShift);
+
+
         //crouching = Input.GetKey(KeyCode.LeftControl);
 
         //Crouching
@@ -85,25 +94,6 @@ public class DaniMovement : MonoBehaviour
         //    StartCrouch();
         //if (Input.GetKeyUp(KeyCode.LeftControl))
         //    StopCrouch();
-    }
-
-    private void StartCrouch()
-    {
-        transform.localScale = crouchScale;
-        transform.position = new Vector3(transform.position.x, transform.position.y - 0.5f, transform.position.z);
-        if (rb.velocity.magnitude > 0.5f)
-        {
-            if (grounded)
-            {
-                rb.AddForce(orientation.transform.forward * slideForce);
-            }
-        }
-    }
-
-    private void StopCrouch()
-    {
-        transform.localScale = playerScale;
-        transform.position = new Vector3(transform.position.x, transform.position.y + 0.5f, transform.position.z);
     }
 
     private void Movement()
@@ -118,20 +108,19 @@ public class DaniMovement : MonoBehaviour
         //Counteract sliding and sloppy movement
         CounterMovement(x, y, mag);
 
+        //reset jumps and dashframes
+        if (grounded) jumps = 1;
+
         //If holding jump && ready to jump, then jump
         if (readyToJump && jumping) Jump();
 
-        if (grounded) jumps = 1;
+        if (isDashing) {
+            StartCoroutine(Dash());
+        }
+            
 
         //Set max speed
         float maxSpeed = this.maxSpeed;
-
-        //If sliding down a ramp, add force down so player stays grounded and also builds speed
-        if (crouching && grounded && readyToJump)
-        {
-            rb.AddForce(Vector3.down * Time.deltaTime * 3000);
-            return;
-        }
 
         //If speed is larger than maxspeed, cancel out the input so you don't go over max speed
         if (x > 0 && xMag > maxSpeed) x = 0;
@@ -140,21 +129,40 @@ public class DaniMovement : MonoBehaviour
         if (y < 0 && yMag < -maxSpeed) y = 0;
 
         //Some multipliers
-        float multiplier = 1f, multiplierV = 1f;
+        float multiplier = 1f, multiplierForward = 1f, multiplierSide = 1f;
 
         // Movement in air
         if (!grounded)
         {
-            multiplier = 0.75f;
-            multiplierV = 0.75f;
+            multiplier = 0.9f;
+            multiplierForward = 0.9f;
         }
-
-        // Movement while sliding
-        if (grounded && crouching) multiplierV = 0f;
-
+        
         //Apply forces to move player
-        rb.AddForce(orientation.transform.forward * y * moveSpeed * Time.deltaTime * multiplier * multiplierV);
-        rb.AddForce(orientation.transform.right * x * moveSpeed * Time.deltaTime * multiplier);
+        rb.AddForce(orientation.transform.forward * y * moveSpeed * Time.deltaTime * multiplier * multiplierForward);
+        rb.AddForce(orientation.transform.right * x * moveSpeed * Time.deltaTime * multiplier * multiplierSide);
+ 
+    } 
+
+    private IEnumerator Dash()
+    {
+        if (Time.time > dashCheck)
+        {
+            float timePassed = 0f;
+            while (timePassed < dashDuration)
+            {
+                timePassed += Time.deltaTime;
+
+                rb.AddForce(orientation.transform.forward * dashSpeed * Time.deltaTime);
+
+                Vector3 vel = rb.velocity;
+
+                rb.velocity = new Vector3(vel.x, 0, vel.z);
+                
+                yield return null;
+            }
+        }
+        dashCheck = dashCooldown + Time.time;
     }
 
     private void Jump()
@@ -183,6 +191,26 @@ public class DaniMovement : MonoBehaviour
     {
         readyToJump = true;
     }
+
+    /*private void StartCrouch()
+    {
+        transform.localScale = crouchScale;
+        transform.position = new Vector3(transform.position.x, transform.position.y - 0.5f, transform.position.z);
+        if (rb.velocity.magnitude > 0.5f)
+        {
+            if (grounded)
+            {
+                rb.AddForce(orientation.transform.forward * slideForce);
+            }
+        }
+    }
+
+
+    private void StopCrouch()
+    {
+        transform.localScale = playerScale;
+        transform.position = new Vector3(transform.position.x, transform.position.y + 0.5f, transform.position.z);
+    }*/
 
     private float desiredX;
     private void Look()
@@ -233,11 +261,9 @@ public class DaniMovement : MonoBehaviour
         }
     }
 
-    /// <summary>
     /// Find the velocity relative to where the player is looking
     /// Useful for vectors calculations regarding movement and limiting movement
-    /// </summary>
-    /// <returns></returns>
+    
     public Vector2 FindVelRelativeToLook()
     {
         float lookAngle = orientation.transform.eulerAngles.y;
@@ -261,9 +287,7 @@ public class DaniMovement : MonoBehaviour
 
     private bool cancellingGrounded;
 
-    /// <summary>
     /// Handle ground detection
-    /// </summary>
     private void OnCollisionStay(Collision other)
     {
         //Make sure we are only checking for walkable layers
@@ -292,7 +316,6 @@ public class DaniMovement : MonoBehaviour
             Invoke(nameof(StopGrounded), Time.deltaTime * delay);
         }
     }
-
     private void StopGrounded()
     {
         grounded = false;
