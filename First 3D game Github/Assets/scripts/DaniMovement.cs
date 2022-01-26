@@ -27,10 +27,6 @@ public class DaniMovement : MonoBehaviour
     private float threshold = 0.01f;
     public float maxSlopeAngle = 35f;
 
-    //Crouch & Slide
-    private Vector3 crouchScale = new Vector3(1, 0.5f, 1);
-    private Vector3 playerScale;
-    [SerializeField] float slideCounterMovement = 0.2f;
 
     //Jumping
     private bool readyToJump = true;
@@ -40,17 +36,21 @@ public class DaniMovement : MonoBehaviour
 
     //Input
     float x, y;
-    bool jumping, sprinting, isDashing, crouching;
+    bool jumping, sprinting, isDashing, crouching, restart, test;
 
     //Sliding
     private Vector3 normalVector = Vector3.up;
     //private Vector3 wallNormalVector;
 
     //Dash
-    [SerializeField] float dashSpeed = 750f;
-    [SerializeField] float dashDuration = 0.45f;
+    [SerializeField] float dashSpeed = 1000f;
+    [SerializeField] float dashDuration = 35f;
     private float dashCooldown = 1f;
     private float dashCheck = 0f;
+    private bool canDash = true;
+
+    //test
+    private Vector3 playerPos;
 
     void Awake()
     {
@@ -59,7 +59,8 @@ public class DaniMovement : MonoBehaviour
 
     void Start()
     {
-        playerScale = transform.localScale;
+        
+        playerPos = transform.localPosition;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
@@ -86,6 +87,9 @@ public class DaniMovement : MonoBehaviour
         jumping = Input.GetButton("Jump");
         isDashing = Input.GetKey(KeyCode.LeftShift);
 
+        restart = Input.GetKey(KeyCode.R);
+        test = Input.GetKey(KeyCode.LeftAlt);
+
 
         //crouching = Input.GetKey(KeyCode.LeftControl);
 
@@ -94,6 +98,11 @@ public class DaniMovement : MonoBehaviour
         //    StartCrouch();
         //if (Input.GetKeyUp(KeyCode.LeftControl))
         //    StopCrouch();
+    }
+
+    private void RestartGame()
+    {
+        transform.localPosition = playerPos;
     }
 
     private void Movement()
@@ -114,10 +123,7 @@ public class DaniMovement : MonoBehaviour
         //If holding jump && ready to jump, then jump
         if (readyToJump && jumping) Jump();
 
-        if (isDashing) {
-            StartCoroutine(Dash());
-        }
-            
+        if (restart) RestartGame();
 
         //Set max speed
         float maxSpeed = this.maxSpeed;
@@ -136,8 +142,17 @@ public class DaniMovement : MonoBehaviour
         {
             multiplier = 0.9f;
             multiplierForward = 0.9f;
+            multiplierSide = 0.7f;
+        }
+
+        if (test) Debug.Log(rb.velocity);
+
+        if (isDashing && canDash)
+        {
+            StartCoroutine(Dash());
         }
         
+
         //Apply forces to move player
         rb.AddForce(orientation.transform.forward * y * moveSpeed * Time.deltaTime * multiplier * multiplierForward);
         rb.AddForce(orientation.transform.right * x * moveSpeed * Time.deltaTime * multiplier * multiplierSide);
@@ -148,7 +163,9 @@ public class DaniMovement : MonoBehaviour
     {
         if (Time.time > dashCheck)
         {
+            //Debug.Log("hello");
             float timePassed = 0f;
+            canDash = false;
             while (timePassed < dashDuration)
             {
                 timePassed += Time.deltaTime;
@@ -160,7 +177,12 @@ public class DaniMovement : MonoBehaviour
                 rb.velocity = new Vector3(vel.x, 0, vel.z);
                 
                 yield return null;
+                
             }
+            //Invoke(nameof(ResetDash), 1);
+            yield return new WaitForSeconds(1);
+            canDash = true;
+            //Debug.Log("reset dash");
         }
         dashCheck = dashCooldown + Time.time;
     }
@@ -190,6 +212,10 @@ public class DaniMovement : MonoBehaviour
     private void ResetJump()
     {
         readyToJump = true;
+    }
+    private void ResetDash()
+    {
+        canDash = true;
     }
 
     /*private void StartCrouch()
@@ -234,13 +260,6 @@ public class DaniMovement : MonoBehaviour
     private void CounterMovement(float x, float y, Vector2 mag)
     {
         if (!grounded || jumping) return;
-
-        //Slow down sliding
-        if (crouching)
-        {
-            rb.AddForce(moveSpeed * Time.deltaTime * -rb.velocity.normalized * slideCounterMovement);
-            return;
-        }
 
         //Counter movement
         if (Math.Abs(mag.x) > threshold && Math.Abs(x) < 0.05f || (mag.x < -threshold && x > 0) || (mag.x > threshold && x < 0))

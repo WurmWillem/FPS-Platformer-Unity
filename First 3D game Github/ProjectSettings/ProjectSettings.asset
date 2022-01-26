@@ -615,11 +615,12 @@ PlayerSettings:
   m_MobileRenderingPath: 1
   metroPackageName: Template3D
   metroPackageVersion: 1.0.0.0
-  metroCertificatePath: 
+  metroCertificatePath: C:\Users\Thije\OneDrive\Pictures\Documents\GitHub\FPS-Platformer-Unity\First
+    3D game Github\Assets\WSATestCertificate.pfx
   metroCertificatePassword: 
-  metroCertificateSubject: 
-  metroCertificateIssuer: 
-  metroCertificateNotAfter: 0000000000000000
+  metroCertificateSubject: DefaultCompany
+  metroCertificateIssuer: DefaultCompany
+  metroCertificateNotAfter: 00212d100931d901
   metroApplicationDescription: Template_3D
   wsaImages: {}
   metroTileShortName: First 3D game
