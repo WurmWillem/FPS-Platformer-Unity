@@ -4,10 +4,10 @@ using UnityEngine;
 
 public class DaniMovement : MonoBehaviour
 {
-
     //Assingables
     public Transform playerCam;
     public Transform orientation;
+    public ParticleSystem jumpParticles;
 
     //Other
     private Rigidbody rb;
@@ -18,38 +18,40 @@ public class DaniMovement : MonoBehaviour
     private float sensMultiplier = 1f;
 
     //Movement
-    [SerializeField] float moveSpeed = 4500;
-    [SerializeField] float maxSpeed = 20;
-    [SerializeField] bool grounded;
+    [SerializeField] private int moveSpeed = 4500;
+    [SerializeField] private int maxSpeed = 30;
+    [SerializeField] private bool grounded;
     [SerializeField] LayerMask whatIsGround;
 
-    public float counterMovement = 0.175f;
+    //Counter movement
+    [SerializeField] private float counterMovement = 0.175f;
     private float threshold = 0.01f;
-    public float maxSlopeAngle = 35f;
-
+    [SerializeField] private float maxSlopeAngle = 35f;
 
     //Jumping
     private bool readyToJump = true;
     private float jumpCooldown = 0.3f;
-    [SerializeField] float jumpForce = 550f;
+    [SerializeField] private float jumpForce = 550f;
     private int jumps = 1;
 
     //Input
-    float x, y;
-    bool jumping, sprinting, isDashing, crouching, restart, test;
+    private float x, y;
+    private bool jumping, sprinting, isDashing, crouching, restart, test;
 
     //Sliding
     private Vector3 normalVector = Vector3.up;
     //private Vector3 wallNormalVector;
 
     //Dash
-    [SerializeField] float dashSpeed = 1000f;
-    [SerializeField] float dashDuration = 35f;
-    private float dashCooldown = 1f;
+    [SerializeField] private float dashSpeed = 4000f;
+    [SerializeField] private float dashDuration = 0.35f;
+
+    private float dashCooldown = 0.1f;
     private float dashCheck = 0f;
     private bool canDash = true;
+    private bool canDashIfGrounded;
 
-    //test
+    //Reset
     private Vector3 playerPos;
 
     void Awake()
@@ -59,12 +61,10 @@ public class DaniMovement : MonoBehaviour
 
     void Start()
     {
-        
         playerPos = transform.localPosition;
         Cursor.lockState = CursorLockMode.Locked;
         Cursor.visible = false;
     }
-
 
     private void FixedUpdate()
     {
@@ -77,9 +77,7 @@ public class DaniMovement : MonoBehaviour
         Look();
     }
 
-    /// <summary>
-    /// Find user input. Should put this in its own class but im lazy
-    /// </summary>
+    // Find user input
     private void MyInput()
     {
         x = Input.GetAxisRaw("Horizontal");
@@ -89,20 +87,6 @@ public class DaniMovement : MonoBehaviour
 
         restart = Input.GetKey(KeyCode.R);
         test = Input.GetKey(KeyCode.LeftAlt);
-
-
-        //crouching = Input.GetKey(KeyCode.LeftControl);
-
-        //Crouching
-        //if (Input.GetKeyDown(KeyCode.LeftControl))
-        //    StartCrouch();
-        //if (Input.GetKeyUp(KeyCode.LeftControl))
-        //    StopCrouch();
-    }
-
-    private void RestartGame()
-    {
-        transform.localPosition = playerPos;
     }
 
     private void Movement()
@@ -118,13 +102,20 @@ public class DaniMovement : MonoBehaviour
         CounterMovement(x, y, mag);
 
         //reset jumps and dashframes
-        if (grounded) jumps = 1;
+        if (grounded) jumps = 1; 
+
+        //reset dash
+        if (grounded && canDashIfGrounded)
+        {
+            canDash = true;
+        }
 
         //If holding jump && ready to jump, then jump
         if (readyToJump && jumping) Jump();
 
         if (restart) RestartGame();
 
+        if (test) Debug.Log(rb.velocity);
         //Set max speed
         float maxSpeed = this.maxSpeed;
 
@@ -145,18 +136,15 @@ public class DaniMovement : MonoBehaviour
             multiplierSide = 0.7f;
         }
 
-        if (test) Debug.Log(rb.velocity);
-
+        // activate dash
         if (isDashing && canDash)
         {
             StartCoroutine(Dash());
         }
         
-
         //Apply forces to move player
         rb.AddForce(orientation.transform.forward * y * moveSpeed * Time.deltaTime * multiplier * multiplierForward);
         rb.AddForce(orientation.transform.right * x * moveSpeed * Time.deltaTime * multiplier * multiplierSide);
- 
     } 
 
     private IEnumerator Dash()
@@ -166,23 +154,26 @@ public class DaniMovement : MonoBehaviour
             //Debug.Log("hello");
             float timePassed = 0f;
             canDash = false;
+            canDashIfGrounded = false;
             while (timePassed < dashDuration)
             {
                 timePassed += Time.deltaTime;
 
-                rb.AddForce(orientation.transform.forward * dashSpeed * Time.deltaTime);
-
                 Vector3 vel = rb.velocity;
 
+                rb.AddForce(orientation.transform.forward * dashSpeed * Time.deltaTime);
                 rb.velocity = new Vector3(vel.x, 0, vel.z);
                 
                 yield return null;
-                
             }
-            //Invoke(nameof(ResetDash), 1);
-            yield return new WaitForSeconds(1);
-            canDash = true;
+
+            Vector3 vel1 = rb.velocity;
+            rb.velocity = new Vector3(vel1.x * 0.75f, vel1.y * 0.75f, vel1.z * 0.75f);
+
+            yield return new WaitForSeconds(0.25f);
+            canDashIfGrounded = true;
             //Debug.Log("reset dash");
+            
         }
         dashCheck = dashCooldown + Time.time;
     }
@@ -193,6 +184,7 @@ public class DaniMovement : MonoBehaviour
         {
             readyToJump = false;
             jumps -= 1;
+            Instantiate(jumpParticles, transform.position, transform.rotation);
 
             //Add jump forces
             rb.AddForce(Vector2.up * jumpForce * 1.5f);
@@ -212,49 +204,6 @@ public class DaniMovement : MonoBehaviour
     private void ResetJump()
     {
         readyToJump = true;
-    }
-    private void ResetDash()
-    {
-        canDash = true;
-    }
-
-    /*private void StartCrouch()
-    {
-        transform.localScale = crouchScale;
-        transform.position = new Vector3(transform.position.x, transform.position.y - 0.5f, transform.position.z);
-        if (rb.velocity.magnitude > 0.5f)
-        {
-            if (grounded)
-            {
-                rb.AddForce(orientation.transform.forward * slideForce);
-            }
-        }
-    }
-
-
-    private void StopCrouch()
-    {
-        transform.localScale = playerScale;
-        transform.position = new Vector3(transform.position.x, transform.position.y + 0.5f, transform.position.z);
-    }*/
-
-    private float desiredX;
-    private void Look()
-    {
-        float mouseX = Input.GetAxis("Mouse X") * sensitivity * Time.fixedDeltaTime * sensMultiplier;
-        float mouseY = Input.GetAxis("Mouse Y") * sensitivity * Time.fixedDeltaTime * sensMultiplier;
-
-        //Find current look rotation
-        Vector3 rot = playerCam.transform.localRotation.eulerAngles;
-        desiredX = rot.y + mouseX;
-
-        //Rotate, and also make sure we dont over- or under-rotate.
-        xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
-
-        //Perform the rotations
-        playerCam.transform.localRotation = Quaternion.Euler(xRotation, desiredX, 0);
-        orientation.transform.localRotation = Quaternion.Euler(0, desiredX, 0);
     }
 
     private void CounterMovement(float x, float y, Vector2 mag)
@@ -280,9 +229,27 @@ public class DaniMovement : MonoBehaviour
         }
     }
 
+    private float desiredX;
+    private void Look()
+    {
+        float mouseX = Input.GetAxis("Mouse X") * sensitivity * Time.fixedDeltaTime * sensMultiplier;
+        float mouseY = Input.GetAxis("Mouse Y") * sensitivity * Time.fixedDeltaTime * sensMultiplier;
+
+        //Find current look rotation
+        Vector3 rot = playerCam.transform.localRotation.eulerAngles;
+        desiredX = rot.y + mouseX;
+
+        //Rotate, and also make sure we dont over- or under-rotate.
+        xRotation -= mouseY;
+        xRotation = Mathf.Clamp(xRotation, -90f, 90f);
+
+        //Perform the rotations
+        playerCam.transform.localRotation = Quaternion.Euler(xRotation, desiredX, 0);
+        orientation.transform.localRotation = Quaternion.Euler(0, desiredX, 0);
+    }
+
     /// Find the velocity relative to where the player is looking
     /// Useful for vectors calculations regarding movement and limiting movement
-    
     public Vector2 FindVelRelativeToLook()
     {
         float lookAngle = orientation.transform.eulerAngles.y;
@@ -334,6 +301,10 @@ public class DaniMovement : MonoBehaviour
             cancellingGrounded = true;
             Invoke(nameof(StopGrounded), Time.deltaTime * delay);
         }
+    }
+    private void RestartGame()
+    {
+        transform.localPosition = playerPos;
     }
     private void StopGrounded()
     {
