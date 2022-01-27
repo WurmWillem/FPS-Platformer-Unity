@@ -5343,7 +5343,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 923046691}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -16.9, y: 2.4, z: 23.9}
+  m_LocalPosition: {x: -52.4, y: 7.2, z: 23.9}
   m_LocalScale: {x: 10, y: 10, z: 10}
   m_Children:
   - {fileID: 951444577}
@@ -5715,7 +5715,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1359499855}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 19.3, y: 1.9, z: 38.8}
+  m_LocalPosition: {x: 6, y: 3.5, z: 38.8}
   m_LocalScale: {x: 10, y: 10, z: 10}
   m_Children:
   - {fileID: 1821276676}
@@ -6059,7 +6059,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1976675553}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 103.5, y: 2.08, z: 37.4}
+  m_LocalPosition: {x: 91.7, y: 2.08, z: 37.4}
   m_LocalScale: {x: 1, y: 1.5, z: 1}
   m_Children:
   - {fileID: 269570027}
@@ -6098,16 +6098,17 @@ MonoBehaviour:
   playerCam: {fileID: 144428144}
   orientation: {fileID: 1776309882}
   jumpParticles: {fileID: 44587401}
-  moveSpeed: 4500
+  moveSpeed: 4000
   maxSpeed: 30
   grounded: 0
   whatIsGround:
     serializedVersion: 2
     m_Bits: 8
-  counterMovement: 0.175
+  counterMovement: 0.2
   maxSlopeAngle: 35
+  counterMovementAir: 0.01
   jumpForce: 750
-  dashSpeed: 4000
+  dashSpeed: 60000
   dashDuration: 0.3
 --- !u!1 &2094889284
 GameObject:
@@ -6198,7 +6199,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 919132148419010806}
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 63.4, y: -2.3, z: 38.8}
+  m_LocalPosition: {x: 50.6, y: -2.3, z: 38.8}
   m_LocalScale: {x: 10, y: 10, z: 10}
   m_Children:
   - {fileID: 6951869188383263574}
@@ -6252,8 +6253,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 3072927567242943569}
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071067}
-  m_LocalPosition: {x: 26.8, y: -4.9, z: 18.2}
-  m_LocalScale: {x: 5500, y: 5000, z: 25}
+  m_LocalPosition: {x: 4.1, y: -4.9, z: 18.2}
+  m_LocalScale: {x: 6500, y: 5000, z: 25}
   m_Children:
   - {fileID: 4712503857091772695}
   m_Father: {fileID: 1938651120}
@@ -6714,8 +6715,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 9130884617592246190}
   m_LocalRotation: {x: -0.7071068, y: -0, z: -0, w: 0.7071067}
-  m_LocalPosition: {x: -47.9, y: 2.3, z: 13.6}
-  m_LocalScale: {x: 500, y: 500, z: 325}
+  m_LocalPosition: {x: -90.9, y: 6, z: 13.6}
+  m_LocalScale: {x: 500, y: 500, z: 500}
   m_Children:
   - {fileID: 1545998232276062952}
   m_Father: {fileID: 1938651120}

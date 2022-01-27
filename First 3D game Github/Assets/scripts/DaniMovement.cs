@@ -27,6 +27,7 @@ public class DaniMovement : MonoBehaviour
     [SerializeField] private float counterMovement = 0.175f;
     private float threshold = 0.01f;
     [SerializeField] private float maxSlopeAngle = 35f;
+    [SerializeField] private float counterMovementAir = 0.01f;
 
     //Jumping
     private bool readyToJump = true;
@@ -82,6 +83,7 @@ public class DaniMovement : MonoBehaviour
     {
         x = Input.GetAxisRaw("Horizontal");
         y = Input.GetAxisRaw("Vertical");
+
         jumping = Input.GetButton("Jump");
         isDashing = Input.GetKey(KeyCode.LeftShift);
 
@@ -131,9 +133,9 @@ public class DaniMovement : MonoBehaviour
         // Movement in air
         if (!grounded)
         {
-            multiplier = 0.9f;
-            multiplierForward = 0.9f;
-            multiplierSide = 0.7f;
+            multiplier = 0.95f;
+            multiplierForward = 0.95f;
+            multiplierSide = 0.75f;
         }
 
         // activate dash
@@ -161,15 +163,17 @@ public class DaniMovement : MonoBehaviour
 
                 Vector3 vel = rb.velocity;
 
-                rb.AddForce(orientation.transform.forward * dashSpeed * Time.deltaTime);
+               rb.AddForce(orientation.transform.forward * dashSpeed * Time.deltaTime); 
+
+
                 rb.velocity = new Vector3(vel.x, 0, vel.z);
                 
                 yield return null;
             }
 
             Vector3 vel1 = rb.velocity;
-            rb.velocity = new Vector3(vel1.x * 0.75f, vel1.y * 0.75f, vel1.z * 0.75f);
-
+            rb.velocity = new Vector3(vel1.x * 0.7f, vel1.y * 0.7f, vel1.z * 0.7f);
+            //Debug.Log(rb.velocity);
             yield return new WaitForSeconds(0.25f);
             canDashIfGrounded = true;
             //Debug.Log("reset dash");
@@ -208,25 +212,42 @@ public class DaniMovement : MonoBehaviour
 
     private void CounterMovement(float x, float y, Vector2 mag)
     {
-        if (!grounded || jumping) return;
+        //if (jumping) return;
 
-        //Counter movement
-        if (Math.Abs(mag.x) > threshold && Math.Abs(x) < 0.05f || (mag.x < -threshold && x > 0) || (mag.x > threshold && x < 0))
+        if (grounded)
         {
-            rb.AddForce(moveSpeed * orientation.transform.right * Time.deltaTime * -mag.x * counterMovement);
-        }
-        if (Math.Abs(mag.y) > threshold && Math.Abs(y) < 0.05f || (mag.y < -threshold && y > 0) || (mag.y > threshold && y < 0))
-        {
-            rb.AddForce(moveSpeed * orientation.transform.forward * Time.deltaTime * -mag.y * counterMovement);
+            //Counter movement
+            if (Math.Abs(mag.x) > threshold && Math.Abs(x) < 0.05f || (mag.x < -threshold && x > 0) || (mag.x > threshold && x < 0))
+            {
+                rb.AddForce(moveSpeed * orientation.transform.right * Time.deltaTime * -mag.x * counterMovement);
+            }
+            if (Math.Abs(mag.y) > threshold && Math.Abs(y) < 0.05f || (mag.y < -threshold && y > 0) || (mag.y > threshold && y < 0))
+            {
+                rb.AddForce(moveSpeed * orientation.transform.forward * Time.deltaTime * -mag.y * counterMovement);
+            }
         }
 
-        //Limit diagonal running. This will also cause a full stop if sliding fast and un-crouching, so not optimal.
-        if (Mathf.Sqrt((Mathf.Pow(rb.velocity.x, 2) + Mathf.Pow(rb.velocity.z, 2))) > maxSpeed)
+        if (!grounded)
         {
-            float fallspeed = rb.velocity.y;
-            Vector3 n = rb.velocity.normalized * maxSpeed;
-            rb.velocity = new Vector3(n.x, fallspeed, n.z);
+            if (Math.Abs(mag.x) > threshold && Math.Abs(x) < 0.05f || (mag.x < -threshold && x > 0) || (mag.x > threshold && x < 0))
+            {
+                rb.AddForce(moveSpeed * orientation.transform.right * Time.deltaTime * -mag.x * counterMovementAir);
+            }
+            if (Math.Abs(mag.y) > threshold && Math.Abs(y) < 0.05f || (mag.y < -threshold && y > 0) || (mag.y > threshold && y < 0))
+            {
+                rb.AddForce(moveSpeed * orientation.transform.forward * Time.deltaTime * -mag.y * counterMovementAir);
+            }
+
+            //Limit diagonal running. This will also cause a full stop if sliding fast and un-crouching, so not optimal.
+            if (Mathf.Sqrt((Mathf.Pow(rb.velocity.x, 2) + Mathf.Pow(rb.velocity.z, 2))) > maxSpeed)
+            {
+                float fallspeed = rb.velocity.y;
+                Vector3 n = rb.velocity.normalized * maxSpeed;
+                rb.velocity = new Vector3(n.x, fallspeed, n.z);
+            }
         }
+
+        
     }
 
     private float desiredX;
