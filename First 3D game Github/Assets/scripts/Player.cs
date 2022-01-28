@@ -2,19 +2,19 @@ using System;
 using System.Collections;
 using UnityEngine;
 
-public class DaniMovement : MonoBehaviour
+public class Player : MonoBehaviour
 {
     //Assingables
     public Transform playerCam;
     public Transform orientation;
-    public ParticleSystem jumpParticles;
+    //public ParticleSystem jumpParticles;
 
     //Other
     private Rigidbody rb;
 
     //Rotation and look
     private float xRotation;
-    private float sensitivity = 75f;
+    [SerializeField] private float sensitivity = 100f;
     private float sensMultiplier = 1f;
 
     //Movement
@@ -26,12 +26,12 @@ public class DaniMovement : MonoBehaviour
     //Counter movement
     [SerializeField] private float counterMovement = 0.175f;
     private float threshold = 0.01f;
-    [SerializeField] private float maxSlopeAngle = 35f;
+    private float maxSlopeAngle = 35f;
     [SerializeField] private float counterMovementAir = 0.01f;
 
     //Jumping
     private bool readyToJump = true;
-    private float jumpCooldown = 0.3f;
+    private float jumpCooldown = 0.25f;
     [SerializeField] private float jumpForce = 550f;
     private int jumps = 1;
 
@@ -46,14 +46,57 @@ public class DaniMovement : MonoBehaviour
     //Dash
     [SerializeField] private float dashSpeed = 4000f;
     [SerializeField] private float dashDuration = 0.35f;
-
     private float dashCooldown = 0.1f;
     private float dashCheck = 0f;
     private bool canDash = true;
-    private bool canDashIfGrounded;
+    private bool canDashIfGrounded = false;
+
+    //Wallrun
+    [SerializeField] private LayerMask whatIsWall; //Layers in Unity define which GameObjects can interact with different features and one another.
+    [SerializeField] private float maxWallRunSpeed;
+    [SerializeField] private float wallRunForce;
+    [SerializeField] private float maxWallRunTime;
+
+    private bool isWallRight, isWallLeft;
+    private bool isWallRunning;
+
+    [SerializeField] float maxWallRunCameraTilt;
+    [SerializeField] float wallRunCameraTilt;
 
     //Reset
     private Vector3 playerPos;
+
+    private void StartWallRun()
+    {
+        rb.useGravity = false;
+        isWallRunning = true;
+
+        if (rb.velocity.magnitude <= maxWallRunSpeed) // check char doesn't go over the max speeds
+        {
+            rb.AddForce(orientation.forward * wallRunForce * Time.deltaTime); // add forward force
+
+            // make char stick to wall
+            if (isWallRight) { rb.AddForce(orientation.right * wallRunForce / 3 * Time.deltaTime); }
+            if (isWallLeft) { rb.AddForce(-orientation.right * wallRunForce / 3 * Time.deltaTime); }
+        }
+    }
+    private void StopWallRun()
+    {
+        rb.useGravity = true;
+        isWallRunning = false;
+    }
+    private void CheckForWall()
+    {
+        isWallRight = Physics.Raycast(transform.position, orientation.right, 2f, whatIsWall);
+        isWallLeft = Physics.Raycast(transform.position, -orientation.right, 2f, whatIsWall);
+
+        if (!isWallLeft || !isWallRight) StopWallRun();
+        if (isWallLeft || isWallRight)
+        {
+            jumps = 1;
+            canDash = true;
+        }
+    }
 
     void Awake()
     {
@@ -76,6 +119,7 @@ public class DaniMovement : MonoBehaviour
     {
         MyInput();
         Look();
+        CheckForWall();
     }
 
     // Find user input
@@ -86,6 +130,9 @@ public class DaniMovement : MonoBehaviour
 
         jumping = Input.GetButton("Jump");
         isDashing = Input.GetKey(KeyCode.LeftShift);
+
+        if (Input.GetKey(KeyCode.A) && isWallLeft) { StartWallRun(); }
+        if (Input.GetKey(KeyCode.D) && isWallRight) { StartWallRun(); }
 
         restart = Input.GetKey(KeyCode.R);
         test = Input.GetKey(KeyCode.LeftAlt);
@@ -157,29 +204,26 @@ public class DaniMovement : MonoBehaviour
             float timePassed = 0f;
             canDash = false;
             canDashIfGrounded = false;
+            
             while (timePassed < dashDuration)
             {
                 timePassed += Time.deltaTime;
+                
 
+                rb.AddForce(orientation.transform.forward * dashSpeed * Time.deltaTime); //var localVel = transform.InverseTransformDirection(rigidbody.velocity); this makes velocity become negative when direction changes 
                 Vector3 vel = rb.velocity;
-
-               rb.AddForce(orientation.transform.forward * dashSpeed * Time.deltaTime); 
-
-
                 rb.velocity = new Vector3(vel.x, 0, vel.z);
                 
                 yield return null;
             }
-
-            Vector3 vel1 = rb.velocity;
-            rb.velocity = new Vector3(vel1.x * 0.7f, vel1.y * 0.7f, vel1.z * 0.7f);
-            //Debug.Log(rb.velocity);
-            yield return new WaitForSeconds(0.25f);
-            canDashIfGrounded = true;
-            //Debug.Log("reset dash");
-            
         }
         dashCheck = dashCooldown + Time.time;
+
+        Vector3 vel1 = rb.velocity;
+        rb.velocity = new Vector3(vel1.x * 0.7f, vel1.y * 0.7f, vel1.z * 0.7f);
+        
+        yield return new WaitForSeconds(0.3f);
+        canDashIfGrounded = true;
     }
 
     private void Jump()
@@ -188,7 +232,7 @@ public class DaniMovement : MonoBehaviour
         {
             readyToJump = false;
             jumps -= 1;
-            Instantiate(jumpParticles, transform.position, transform.rotation);
+            //Instantiate(jumpParticles, transform.position, transform.rotation);
 
             //Add jump forces
             rb.AddForce(Vector2.up * jumpForce * 1.5f);
@@ -203,6 +247,29 @@ public class DaniMovement : MonoBehaviour
 
             Invoke(nameof(ResetJump), jumpCooldown);
         }
+
+        if (isWallRunning)
+        {
+            readyToJump = false;
+            jumps -= 1;
+
+            //normal jump
+            if (isWallLeft && !Input.GetKey(KeyCode.D) || isWallRight && !Input.GetKey(KeyCode.A))
+            {
+                rb.AddForce(Vector2.up * jumpForce * 1.5f);
+                rb.AddForce(normalVector * jumpForce * 0.5f);
+            }
+
+            //sidwards wallhop
+            if (isWallRight || isWallLeft && Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.D)) rb.AddForce(-orientation.up * jumpForce * 1f);
+            if (isWallRight && Input.GetKey(KeyCode.A)) rb.AddForce(-orientation.right * jumpForce * 3.2f);
+            if (isWallLeft && Input.GetKey(KeyCode.D)) rb.AddForce(orientation.right * jumpForce * 3.2f);
+
+            //Always add forward force
+            rb.AddForce(orientation.forward * jumpForce * 1f);
+            Invoke(nameof(ResetJump), jumpCooldown);
+            
+        }
     }
 
     private void ResetJump()
@@ -212,8 +279,6 @@ public class DaniMovement : MonoBehaviour
 
     private void CounterMovement(float x, float y, Vector2 mag)
     {
-        //if (jumping) return;
-
         if (grounded)
         {
             //Counter movement
@@ -227,7 +292,7 @@ public class DaniMovement : MonoBehaviour
             }
         }
 
-        if (!grounded)
+        if (!grounded || jumping)
         {
             if (Math.Abs(mag.x) > threshold && Math.Abs(x) < 0.05f || (mag.x < -threshold && x > 0) || (mag.x > threshold && x < 0))
             {
@@ -246,8 +311,6 @@ public class DaniMovement : MonoBehaviour
                 rb.velocity = new Vector3(n.x, fallspeed, n.z);
             }
         }
-
-        
     }
 
     private float desiredX;
@@ -265,8 +328,22 @@ public class DaniMovement : MonoBehaviour
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
         //Perform the rotations
-        playerCam.transform.localRotation = Quaternion.Euler(xRotation, desiredX, 0);
+        playerCam.transform.localRotation = Quaternion.Euler(xRotation, desiredX, wallRunCameraTilt);
         orientation.transform.localRotation = Quaternion.Euler(0, desiredX, 0);
+
+        //tilts camera in .5 seconds
+        if (Math.Abs(wallRunCameraTilt) < maxWallRunCameraTilt && isWallRunning && isWallRight)
+            wallRunCameraTilt += maxWallRunCameraTilt * 2 * Time.deltaTime;
+
+        if (Math.Abs(wallRunCameraTilt) < maxWallRunCameraTilt && isWallRunning && isWallLeft)
+            wallRunCameraTilt -= maxWallRunCameraTilt * 2 * Time.deltaTime;
+
+        //tilts camera back again
+        if (wallRunCameraTilt > 0 && !isWallRight && !isWallLeft)
+            wallRunCameraTilt -= maxWallRunCameraTilt * 2 * Time.deltaTime;
+
+        if (wallRunCameraTilt < 0 && !isWallRight && !isWallLeft)
+            wallRunCameraTilt += maxWallRunCameraTilt * 2 * Time.deltaTime;
     }
 
     /// Find the velocity relative to where the player is looking
@@ -294,7 +371,7 @@ public class DaniMovement : MonoBehaviour
 
     private bool cancellingGrounded;
 
-    /// Handle ground detection
+    // Handle ground detection
     private void OnCollisionStay(Collision other)
     {
         //Make sure we are only checking for walkable layers
@@ -331,5 +408,4 @@ public class DaniMovement : MonoBehaviour
     {
         grounded = false;
     }
-
 }
