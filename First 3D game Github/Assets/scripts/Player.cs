@@ -31,7 +31,7 @@ public class Player : MonoBehaviour
 
     //Jumping
     private bool readyToJump = true;
-    private float jumpCooldown = 0.25f;
+    private float jumpCooldown = 0.3f;
     [SerializeField] private float jumpForce = 550f;
     private int jumps = 1;
 
@@ -65,38 +65,6 @@ public class Player : MonoBehaviour
 
     //Reset
     private Vector3 playerPos;
-
-    private void StartWallRun()
-    {
-        rb.useGravity = false;
-        isWallRunning = true;
-
-        if (rb.velocity.magnitude <= maxWallRunSpeed) // check char doesn't go over the max speeds
-        {
-            rb.AddForce(orientation.forward * wallRunForce * Time.deltaTime); // add forward force
-
-            // make char stick to wall
-            if (isWallRight) { rb.AddForce(orientation.right * wallRunForce / 3 * Time.deltaTime); }
-            if (isWallLeft) { rb.AddForce(-orientation.right * wallRunForce / 3 * Time.deltaTime); }
-        }
-    }
-    private void StopWallRun()
-    {
-        rb.useGravity = true;
-        isWallRunning = false;
-    }
-    private void CheckForWall()
-    {
-        isWallRight = Physics.Raycast(transform.position, orientation.right, 2f, whatIsWall);
-        isWallLeft = Physics.Raycast(transform.position, -orientation.right, 2f, whatIsWall);
-
-        if (!isWallLeft || !isWallRight) StopWallRun();
-        if (isWallLeft || isWallRight)
-        {
-            jumps = 1;
-            canDash = true;
-        }
-    }
 
     void Awake()
     {
@@ -272,6 +240,39 @@ public class Player : MonoBehaviour
         }
     }
 
+    private void StartWallRun()
+    {
+        rb.useGravity = false;
+        isWallRunning = true;
+
+        if (rb.velocity.magnitude <= maxWallRunSpeed) // check char doesn't go over the max speeds
+        {
+            rb.AddForce(orientation.forward * wallRunForce * Time.deltaTime); // add forward force
+
+            // make char stick to wall
+            if (isWallRight) { rb.AddForce(orientation.right * wallRunForce / 5 * Time.deltaTime); }
+            if (isWallLeft) { rb.AddForce(-orientation.right * wallRunForce / 5 * Time.deltaTime); }
+        }
+    }
+    private void StopWallRun()
+    {
+        rb.useGravity = true;
+        isWallRunning = false;
+    }
+    private void CheckForWall()
+    {
+        isWallRight = Physics.Raycast(transform.position, orientation.right, 2f, whatIsWall);
+        isWallLeft = Physics.Raycast(transform.position, -orientation.right, 2f, whatIsWall);
+
+        if (!isWallLeft || !isWallRight) StopWallRun();
+        if (isWallLeft || isWallRight)
+        {
+            jumps = 1;
+            canDash = true;
+        }
+    }
+
+
     private void ResetJump()
     {
         readyToJump = true;
@@ -289,6 +290,14 @@ public class Player : MonoBehaviour
             if (Math.Abs(mag.y) > threshold && Math.Abs(y) < 0.05f || (mag.y < -threshold && y > 0) || (mag.y > threshold && y < 0))
             {
                 rb.AddForce(moveSpeed * orientation.transform.forward * Time.deltaTime * -mag.y * counterMovement);
+            }
+
+            //Limit diagonal running. This will also cause a full stop if sliding fast and un-crouching, so not optimal.
+            if (Mathf.Sqrt((Mathf.Pow(rb.velocity.x, 2) + Mathf.Pow(rb.velocity.z, 2))) > maxSpeed)
+            {
+                float fallspeed = rb.velocity.y;
+                Vector3 n = rb.velocity.normalized * maxSpeed;
+                rb.velocity = new Vector3(n.x, fallspeed, n.z);
             }
         }
 
